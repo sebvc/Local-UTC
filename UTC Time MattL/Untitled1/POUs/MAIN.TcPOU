@@ -1,0 +1,89 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="MAIN" Id="{c9cfe12a-66bd-4ab5-be78-11604f09586a}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+
+	fbGetTimeZone : FB_GetTimeZoneInformation;
+	fb_Get_LocTime : FB_LocalSystemTime;
+	fb_UTC_to_LocTime : FB_SystemTimeToTzSpecificLocalTime;
+	fb_LocTime_to_UTC : FB_TzSpecificLocalTimeToSystemTime;
+  	SysTime : TIMESTRUCT;
+    logTimer : TON := ( IN := TRUE, PT := T#500MS );	
+	
+
+  // UTC conversion Constatnt
+  TIMEZONE_TO_UTC : TIMESTRUCT := ( wYear := 0, wMonth := 0, wDay := 29, wHour := 16, wMinute := 46, wSecond := 31, wMilliseconds := 99 );
+
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Start of PLC Code
+(*
+Email:
+
+FB_LocalSystemTime:
+This function block internally combines the functions of the following function blocks: RTC_EX2, NT_GetTime, FB_GetTimeZoneInformation and NT_SetTimeToRTCTime. 
+The FB_LocalSystemTime function block must be called cyclically (e.g. every second or during each PLC cycle). This is necessary to enable the time between synchronizations to be calculated.
+ - sNetID  : Can use AMS id of a target computer, for Local Computer = empty string ''
+ - dwCycle : When the FB resynchronize its local time w/ the system time default is 5 sec
+*)
+fbGetTimeZone(
+	sNetID:='' , 
+	bExecute:= TRUE, 
+	tTimeout:= , 
+	bBusy=> , 
+	bError=> , 
+	nErrID=> , 
+	tzID=> , 
+	tzInfo=> );
+
+// Get Local Time
+fb_Get_LocTime(
+	sNetID:= '', 
+	bEnable:= TRUE, 
+	dwCycle:= 1, 
+	dwOpt:= , 
+	tTimeout:= , 
+	bValid=> , 
+	systemTime=> , 
+	tzID=> );
+
+//Convert to UTC
+IF fb_Get_LocTime.bValid THEN
+  // Valid Time to convert
+	fb_LocTime_to_UTC(
+	in:= fb_Get_LocTime.systemTime, 
+	tzInfo:= fbGetTimeZone.tzInfo, 
+	out=> , 
+	eTzID=> , 
+	bB=> );
+  
+END_IF
+  logTimer( IN := fb_Get_LocTime.bValid );
+  IF logTimer.Q THEN
+      logTimer( IN := FALSE ); logTimer( IN := fb_Get_LocTime.bValid );
+      ADSLOGSTR( ADSLOG_MSGTYPE_HINT OR ADSLOG_MSGTYPE_LOG, 'Local Time:	%s', SYSTEMTIME_TO_STRING(fb_Get_LocTime.systemTime));
+	  ADSLOGSTR( ADSLOG_MSGTYPE_HINT OR ADSLOG_MSGTYPE_LOG, 'UTC Time:	%s', SYSTEMTIME_TO_STRING(fb_LocTime_to_UTC.out));
+  END_IF
+]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="13" Count="0" />
+      <LineId Id="15" Count="7" />
+      <LineId Id="25" Count="0" />
+      <LineId Id="115" Count="7" />
+      <LineId Id="27" Count="2" />
+      <LineId Id="88" Count="7" />
+      <LineId Id="38" Count="4" />
+      <LineId Id="66" Count="4" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="54" Count="3" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
