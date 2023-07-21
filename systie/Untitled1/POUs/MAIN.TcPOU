@@ -1,0 +1,125 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.11">
+  <POU Name="MAIN" Id="{7b294316-c8d6-4864-ae5c-b4624a8017cd}" SpecialFunc="None">
+    <Declaration><![CDATA[PROGRAM MAIN
+VAR
+	//Time Function Blocks
+	fbGetTimeZone : FB_GetTimeZoneInformation;
+	fb_Get_LocTime : FB_LocalSystemTime;
+	fb_LocTime_to_UTC : FB_TzSpecificLocalTimeToSystemTime;
+	//fb_UTC_to_LocTime : FB_SystemTimeToTzSpecificLocalTime;
+	
+	//Timer Function Block
+    logTimer : TON := ( IN := TRUE, PT := T#500MS );	
+	
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[//Start of the PLC Code
+(*
+
+IN ORDER TO USE THESE FUNCTION BLOCKS, YOU NEED TO INSTALL THE Tc2_Utilities LIBRARY
+
+The Outputs of the Time Function blocks is a TIMESTRUCT. 
+
+FB_LocalSystemTime:
+This function block internally combines the functions of the following function blocks: RTC_EX2, NT_GetTime, FB_GetTimeZoneInformation and NT_SetTimeToRTCTime. 
+The FB_LocalSystemTime function block must be called cyclically (e.g. every second or during each PLC cycle). This is necessary to enable the time between synchronizations to be calculated.
+ - sNetID  : Can use AMS id of a target computer, for Local Computer = empty string ''
+ - dwCycle : When the FB resynchronize its local time w/ the system time default is 5 sec
+
+FB_TzSpecificLocalTimeToSystemTime:
+	TzSpecificLocalTime = LocalSystemTime
+	SystemTime = Cordinated Universal Time (UTC)
+
+
+
+*)
+
+//Get Time Zone information. This is used when converting UTC to Local Time
+fbGetTimeZone(
+	sNetID:='' , 
+	bExecute:= TRUE, 
+	tTimeout:= , 
+	bBusy=> , 
+	bError=> , 
+	nErrID=> , 
+	tzID=> , 
+	tzInfo=> );
+
+// Get Local Time
+fb_Get_LocTime(
+	sNetID:= '', 
+	bEnable:= TRUE, 
+	dwCycle:= 1, 
+	dwOpt:= , 
+	tTimeout:= , 
+	bValid=> , 
+	systemTime=> , 
+	tzID=> );
+
+ // Valid Time to convert
+IF fb_Get_LocTime.bValid THEN
+	
+	//Convert to UTC. in : Local Time, tzInfo : The timezone you're in
+	fb_LocTime_to_UTC(
+	in:= fb_Get_LocTime.systemTime, 
+	tzInfo:= fbGetTimeZone.tzInfo, 
+	out=> , 
+	eTzID=> , 
+	bB=> );
+  
+END_IF
+
+(* 
+	//Convert from UTC time to Local Time
+	fb_UTC_to_LocTime(
+	in:= fb_LocTime_to_UTC.out, 
+	tzInfo:= fbGetTimeZone.tzInfo, 
+	out=> , 
+	eTzID=> , 
+	bB=> );
+*)
+
+//Timer for displaying times	
+logTimer( IN := fb_Get_LocTime.bValid );
+IF logTimer.Q THEN
+	logTimer( IN := FALSE ); logTimer( IN := fb_Get_LocTime.bValid );
+	ADSLOGSTR( ADSLOG_MSGTYPE_HINT OR ADSLOG_MSGTYPE_LOG, 'Local Time:	%s', SYSTEMTIME_TO_STRING(fb_Get_LocTime.systemTime));
+	ADSLOGSTR( ADSLOG_MSGTYPE_HINT OR ADSLOG_MSGTYPE_LOG, 'UTC Time:	%s', SYSTEMTIME_TO_STRING(fb_LocTime_to_UTC.out));
+END_IF
+]]></ST>
+    </Implementation>
+    <LineIds Name="MAIN">
+      <LineId Id="153" Count="0" />
+      <LineId Id="15" Count="0" />
+      <LineId Id="17" Count="8" />
+      <LineId Id="146" Count="0" />
+      <LineId Id="26" Count="0" />
+      <LineId Id="115" Count="7" />
+      <LineId Id="27" Count="2" />
+      <LineId Id="88" Count="7" />
+      <LineId Id="38" Count="3" />
+      <LineId Id="147" Count="0" />
+      <LineId Id="42" Count="0" />
+      <LineId Id="66" Count="4" />
+      <LineId Id="65" Count="0" />
+      <LineId Id="48" Count="0" />
+      <LineId Id="51" Count="0" />
+      <LineId Id="156" Count="0" />
+      <LineId Id="155" Count="0" />
+      <LineId Id="169" Count="0" />
+      <LineId Id="164" Count="4" />
+      <LineId Id="158" Count="0" />
+      <LineId Id="157" Count="0" />
+      <LineId Id="150" Count="0" />
+      <LineId Id="54" Count="0" />
+      <LineId Id="149" Count="0" />
+      <LineId Id="55" Count="2" />
+      <LineId Id="59" Count="0" />
+      <LineId Id="58" Count="0" />
+      <LineId Id="2" Count="0" />
+      <LineId Id="170" Count="3" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
